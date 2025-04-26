@@ -28,7 +28,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ bids, asks }) => {
                     <table className={styles.dataTable}>
                         <thead>
                             <tr>
-                                <th>Price (USD)</th>
+                                <th>Price (USDC)</th>
                                 <th>Quantity (BTC)</th>
                             </tr>
                         </thead>
@@ -51,7 +51,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ bids, asks }) => {
                      <table className={styles.dataTable}>
                          <thead>
                             <tr>
-                                <th>Price (USD)</th>
+                                <th>Price (USDC)</th>
                                 <th>Quantity (BTC)</th>
                             </tr>
                         </thead>
@@ -88,7 +88,7 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades }) => {
                 <thead>
                     <tr>
                         <th>Time</th>
-                        <th>Price (USD)</th>
+                        <th>Price (USDC)</th>
                         <th>Quantity (BTC)</th>
                     </tr>
                 </thead>
@@ -111,13 +111,14 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades }) => {
 };
 
 interface OrderFormProps {
-    onSubmit: (order: Omit<IncomingOperation, 'type_op' | 'order_id' | 'account_id' | 'pair'>) => void;
+    onSubmit: (order: Omit<IncomingOperation, 'type_op' | 'order_id' | 'account_id'>) => void;
 }
 
 const OrderForm: React.FC<OrderFormProps> = ({ onSubmit }) => {
     const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
     const [amount, setAmount] = useState<string>('');
     const [price, setPrice] = useState<string>('');
+    const [pair, setPair] = useState<string>('BTC/USDC');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -125,16 +126,19 @@ const OrderForm: React.FC<OrderFormProps> = ({ onSubmit }) => {
             alert('Please enter valid amount and price.');
             return;
         }
-        onSubmit({ side, amount, limit_price: price });
-        // Clear form after submit
-        // setAmount('');
-        // setPrice('');
+        onSubmit({ side, amount, limit_price: price, pair });
     };
 
     return (
         <div className={`${styles.section} ${styles.orderFormSection}`}>
             <h2>Submit New Order</h2>
             <form onSubmit={handleSubmit} className={styles.orderForm}>
+                <div className={styles.formGroup}>
+                    <label htmlFor="pair">Pair:</label>
+                    <select id="pair" value={pair} onChange={(e) => setPair(e.target.value)} disabled>
+                        <option value="BTC/USDC">BTC/USDC</option>
+                    </select>
+                </div>
                 <div className={styles.formGroup}>
                     <label htmlFor="side">Side:</label>
                     <select id="side" value={side} onChange={(e) => setSide(e.target.value as 'BUY' | 'SELL')}>
@@ -147,7 +151,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onSubmit }) => {
                     <input id="amount" type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g., 0.1" required />
                 </div>
                 <div className={styles.formGroup}>
-                    <label htmlFor="price">Limit Price (USD):</label>
+                    <label htmlFor="price">Limit Price (USDC):</label>
                     <input id="price" type="number" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g., 50000" required />
                 </div>
                 <button type="submit" className={`${styles.submitButton} ${side === 'BUY' ? styles.buyButton : styles.sellButton}`}>
@@ -260,31 +264,33 @@ const HomePage: React.FC = () => {
         }
     }, [wsStatus]);
 
-    const handleOrderSubmit = async (orderData: Omit<IncomingOperation, 'type_op' | 'order_id' | 'account_id' | 'pair'>) => {
-         const orderPayload: IncomingOperation = {
-            ...orderData,
-            type_op: 'CREATE',
-            order_id: `web-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            account_id: 'web-user-01',
-            pair: 'BTC-USD',
-        };
-
+    const handleOrderSubmit = async (orderData: Omit<IncomingOperation, 'type_op' | 'order_id' | 'account_id'>) => {
+        console.log("Submitting order:", orderData);
         try {
-            setError(null);
-            const response = await fetch('http://localhost:3001/api/submit-order', {
+            const response = await fetch('http://localhost:3001/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderPayload),
+                body: JSON.stringify({
+                    ...orderData,
+                    type_op: 'NEW_ORDER',
+                    account_id: 'user123',
+                    pair: orderData.pair
+                }),
             });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to submit order: ${response.status}`);
+            }
+
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
             console.log('Order submitted successfully:', result);
+            // Optionally: Show success message to user, clear form, update state etc.
 
         } catch (err: any) {
-            console.error('Failed to submit order:', err);
-            setError(`Order submission failed: ${err.message}`);
-            alert(`Order submission failed: ${err.message}`);
+            console.error('Error submitting order:', err);
+            setError(err.message || 'Failed to submit order.');
+            // Optionally: Show error message to user
         }
     };
 
@@ -302,7 +308,7 @@ const HomePage: React.FC = () => {
         <div className={styles.container}>
             <main className={styles.main}>
                 <div className={styles.header}>
-                    <h1 className={styles.title}>Xoro Trading - BTC/USD</h1>
+                    <h1 className={styles.title}>Xoro Trading</h1>
                     <div className={styles.statusIndicator}>
                          <span>WebSocket: {getStatusText(wsStatus)}</span>
                          {error && <span className={styles.errorText}> | Error: {error}</span>}

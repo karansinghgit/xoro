@@ -25,7 +25,7 @@ const createOp = (
     side: 'BUY' | 'SELL',
     amount: string,
     limit_price: string,
-    pair: string = 'BTC/USD',
+    pair: string = 'BTC/USDC',
     account_id: string = 'testAcc'
 ): CreateOperationInput => ({
     type_op: 'CREATE',
@@ -38,7 +38,7 @@ const createOp = (
 });
 
 // Helper for DELETE part - Create minimal object matching runtime usage
-const deleteOp = (order_id: string, pair: string = 'BTC/USD'): DeleteOperationInput => ({
+const deleteOp = (order_id: string, pair: string = 'BTC/USDC'): DeleteOperationInput => ({
     type_op: 'DELETE',
     order_id,
     pair,
@@ -86,8 +86,8 @@ describe('MatchingEngine', () => {
     });
 
     test('should match a single CREATE buy with a single CREATE sell completely', () => {
-        const buyOp = createOp('buy1', 'BUY', '10', '100', 'BTC/USD', buyerAccount);
-        const sellOp = createOp('sell1', 'SELL', '10', '100', 'BTC/USD', sellerAccount);
+        const buyOp = createOp('buy1', 'BUY', '10', '100', 'BTC/USDC', buyerAccount);
+        const sellOp = createOp('sell1', 'SELL', '10', '100', 'BTC/USDC', sellerAccount);
 
         const trades1 = engine.processOperation(buyOp as IncomingOperation);
         expect(trades1).toHaveLength(0);
@@ -102,8 +102,8 @@ describe('MatchingEngine', () => {
     });
 
     test('should handle partial fills and leave remaining orders', () => {
-        const buyOp = createOp('buy1', 'BUY', '15', '99', 'BTC/USD', buyerAccount);
-        const sellOp = createOp('sell1', 'SELL', '10', '99', 'BTC/USD', sellerAccount);
+        const buyOp = createOp('buy1', 'BUY', '15', '99', 'BTC/USDC', buyerAccount);
+        const sellOp = createOp('sell1', 'SELL', '10', '99', 'BTC/USDC', sellerAccount);
 
         engine.processOperation(buyOp as IncomingOperation);
         const trades = engine.processOperation(sellOp as IncomingOperation);
@@ -120,8 +120,8 @@ describe('MatchingEngine', () => {
 
     test('should handle partial fills where incoming order is larger and placed on book', () => {
         engine = new MatchingEngine();
-        const sellOp = createOp('sell2', 'SELL', '5', '102', 'BTC/USD', sellerAccount);
-        const buyOp = createOp('buy2', 'BUY', '10', '102', 'BTC/USD', buyerAccount);
+        const sellOp = createOp('sell2', 'SELL', '5', '102', 'BTC/USDC', sellerAccount);
+        const buyOp = createOp('buy2', 'BUY', '10', '102', 'BTC/USDC', buyerAccount);
 
         engine.processOperation(sellOp as IncomingOperation);
         const trades = engine.processOperation(buyOp as IncomingOperation);
@@ -136,9 +136,9 @@ describe('MatchingEngine', () => {
     });
 
     test('should respect time priority for orders at the same price level', () => {
-        const sellOp1 = createOp('sell1', 'SELL', '5', '105', 'BTC/USD', sellerAccount + '1'); // Different sellers
-        const sellOp2 = createOp('sell2', 'SELL', '5', '105', 'BTC/USD', sellerAccount + '2');
-        const buyOp = createOp('buy1', 'BUY', '7', '105', 'BTC/USD', buyerAccount);
+        const sellOp1 = createOp('sell1', 'SELL', '5', '105', 'BTC/USDC', sellerAccount + '1'); // Different sellers
+        const sellOp2 = createOp('sell2', 'SELL', '5', '105', 'BTC/USDC', sellerAccount + '2');
+        const buyOp = createOp('buy1', 'BUY', '7', '105', 'BTC/USDC', buyerAccount);
 
         engine.processOperation(sellOp1 as IncomingOperation);
         engine.processOperation(sellOp2 as IncomingOperation);
@@ -157,8 +157,8 @@ describe('MatchingEngine', () => {
 
     test('should add an order to the book if no match is found', () => {
         // No match expected, account IDs don't matter as much
-        const buyOp = createOp('buy1', 'BUY', '10', '90', 'BTC/USD', buyerAccount);
-        const sellOp = createOp('sell1', 'SELL', '5', '110', 'BTC/USD', sellerAccount);
+        const buyOp = createOp('buy1', 'BUY', '10', '90', 'BTC/USDC', buyerAccount);
+        const sellOp = createOp('sell1', 'SELL', '5', '110', 'BTC/USDC', sellerAccount);
 
         const trades1 = engine.processOperation(buyOp as IncomingOperation);
         expect(trades1).toHaveLength(0);
@@ -175,7 +175,7 @@ describe('MatchingEngine', () => {
 
     test('should handle DELETE for an existing order', () => {
         // Only one order, account ID doesn't matter for the delete itself
-        const buyOp = createOp('buy1', 'BUY', '5', '95', 'BTC/USD', buyerAccount);
+        const buyOp = createOp('buy1', 'BUY', '5', '95', 'BTC/USDC', buyerAccount);
         engine.processOperation(buyOp as IncomingOperation);
 
         let currentBook = engine.getOutputOrderBook();
@@ -191,7 +191,7 @@ describe('MatchingEngine', () => {
     });
 
     test('should handle DELETE for a non-existent order gracefully', () => {
-        const buyOp = createOp('buy1', 'BUY', '5', '95', 'BTC/USD', buyerAccount);
+        const buyOp = createOp('buy1', 'BUY', '5', '95', 'BTC/USDC', buyerAccount);
         engine.processOperation(buyOp as IncomingOperation);
 
         const delOpNonExistent = deleteOp('buy2');
@@ -212,8 +212,8 @@ describe('MatchingEngine', () => {
     });
 
     test('should handle DELETE for an already filled order gracefully', () => {
-        const buyOp = createOp('buy1', 'BUY', '10', '100', 'BTC/USD', buyerAccount);
-        const sellOp = createOp('sell1', 'SELL', '10', '100', 'BTC/USD', sellerAccount);
+        const buyOp = createOp('buy1', 'BUY', '10', '100', 'BTC/USDC', buyerAccount);
+        const sellOp = createOp('sell1', 'SELL', '10', '100', 'BTC/USDC', sellerAccount);
 
         engine.processOperation(buyOp as IncomingOperation);
         engine.processOperation(sellOp as IncomingOperation);
@@ -239,8 +239,8 @@ describe('MatchingEngine', () => {
     });
 
     test('should handle sequence: CREATE, CREATE, DELETE first, CREATE matching second', () => {
-        const sellOp1 = createOp('sell1', 'SELL', '5', '102', 'BTC/USD', sellerAccount + '1');
-        const sellOp2 = createOp('sell2', 'SELL', '8', '103', 'BTC/USD', sellerAccount + '2'); // Different seller
+        const sellOp1 = createOp('sell1', 'SELL', '5', '102', 'BTC/USDC', sellerAccount + '1');
+        const sellOp2 = createOp('sell2', 'SELL', '8', '103', 'BTC/USDC', sellerAccount + '2'); // Different seller
 
         engine.processOperation(sellOp1 as IncomingOperation);
         engine.processOperation(sellOp2 as IncomingOperation);
@@ -257,7 +257,7 @@ describe('MatchingEngine', () => {
         expect(book2.asks[0].order_id).toBe('sell2');
 
         // Buyer is different from remaining seller
-        const buyOp = createOp('buy1', 'BUY', '10', '103', 'BTC/USD', buyerAccount);
+        const buyOp = createOp('buy1', 'BUY', '10', '103', 'BTC/USDC', buyerAccount);
         const trades2 = engine.processOperation(buyOp as IncomingOperation);
 
         expect(trades2).toHaveLength(1);
@@ -273,13 +273,13 @@ describe('MatchingEngine', () => {
     test('should handle self-trade prevention (incoming BUY matches own resting SELL)', () => {
         const selfTradeAccount = 'selfTrader';
         const otherAccount = 'otherTrader';
-        const restingSellOther = createOp('sellOther', 'SELL', '5', '98', 'BTC/USD', otherAccount);
-        const restingSellSelf = createOp('sellSelf', 'SELL', '10', '99', 'BTC/USD', selfTradeAccount);
+        const restingSellOther = createOp('sellOther', 'SELL', '5', '98', 'BTC/USDC', otherAccount);
+        const restingSellSelf = createOp('sellSelf', 'SELL', '10', '99', 'BTC/USDC', selfTradeAccount);
 
         engine.processOperation(restingSellOther as IncomingOperation);
         engine.processOperation(restingSellSelf as IncomingOperation);
 
-        const incomingBuySelf = createOp('buySelf', 'BUY', '12', '99', 'BTC/USD', selfTradeAccount);
+        const incomingBuySelf = createOp('buySelf', 'BUY', '12', '99', 'BTC/USDC', selfTradeAccount);
         const trades = engine.processOperation(incomingBuySelf as IncomingOperation);
 
         expect(trades).toHaveLength(1);
@@ -296,13 +296,13 @@ describe('MatchingEngine', () => {
     test('should handle self-trade prevention (incoming SELL matches own resting BUY)', () => {
         const selfTradeAccount = 'selfTrader';
         const otherAccount = 'otherTrader';
-        const restingBuyOther = createOp('buyOther', 'BUY', '5', '102', 'BTC/USD', otherAccount);
-        const restingBuySelf = createOp('buySelf', 'BUY', '10', '101', 'BTC/USD', selfTradeAccount);
+        const restingBuyOther = createOp('buyOther', 'BUY', '5', '102', 'BTC/USDC', otherAccount);
+        const restingBuySelf = createOp('buySelf', 'BUY', '10', '101', 'BTC/USDC', selfTradeAccount);
 
         engine.processOperation(restingBuyOther as IncomingOperation);
         engine.processOperation(restingBuySelf as IncomingOperation);
 
-        const incomingSellSelf = createOp('sellSelf', 'SELL', '12', '101', 'BTC/USD', selfTradeAccount);
+        const incomingSellSelf = createOp('sellSelf', 'SELL', '12', '101', 'BTC/USDC', selfTradeAccount);
         const trades = engine.processOperation(incomingSellSelf as IncomingOperation);
 
         expect(trades).toHaveLength(1);
@@ -323,7 +323,7 @@ describe('MatchingEngine', () => {
                 {
                     order_id: 'existing_bid1',
                     account_id: 'acc1',
-                    pair: 'BTC/USD',
+                    pair: 'BTC/USDC',
                     type: 'BUY' as const,
                     price: '98.50',
                     quantity: '5.00'
@@ -331,7 +331,7 @@ describe('MatchingEngine', () => {
                 {
                     order_id: 'existing_bid2',
                     account_id: 'acc2',
-                    pair: 'BTC/USD',
+                    pair: 'BTC/USDC',
                     type: 'BUY' as const,
                     price: '97.00',
                     quantity: '3.00'
@@ -341,7 +341,7 @@ describe('MatchingEngine', () => {
                 {
                     order_id: 'existing_ask1',
                     account_id: 'acc3',
-                    pair: 'BTC/USD',
+                    pair: 'BTC/USDC',
                     type: 'SELL' as const,
                     price: '101.00',
                     quantity: '4.00'
@@ -355,7 +355,7 @@ describe('MatchingEngine', () => {
         expect(currentBook.bids.length).toBe(2);
         expect(currentBook.asks.length).toBe(1);
         
-        const incomingBuy = createOp('new_buy', 'BUY', '2.00', '101.50', 'BTC/USD', 'buyerAcc');
+        const incomingBuy = createOp('new_buy', 'BUY', '2.00', '101.50', 'BTC/USDC', 'buyerAcc');
         const trades = engine.processOperation(incomingBuy as IncomingOperation);
         
         expect(trades.length).toBe(1);
