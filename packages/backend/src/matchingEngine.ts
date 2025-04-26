@@ -25,11 +25,10 @@ export class MatchingEngine {
         let incomingPrice: Decimal;
 
         try {
-            // 1. Parse amount and price into Decimal
+            // Parse amount and price into Decimal
             incomingQuantity = new Decimal(operation.amount);
             incomingPrice = new Decimal(operation.limit_price);
 
-            // Basic validation: check if positive
             if (incomingQuantity.isNegative() || incomingQuantity.isZero() || incomingPrice.isNegative() || incomingPrice.isZero()) {
                 console.warn(`Invalid amount or price for CREATE operation ${operation.order_id}. Amount: ${operation.amount}, Price: ${operation.limit_price}. Must be positive. Skipping.`);
                 return trades;
@@ -39,7 +38,7 @@ export class MatchingEngine {
             return trades;
         }
 
-        // 2. Create the typed order object with Decimal values
+        // Create the typed order object with Decimal values
         const incomingOrder: OrderBookOrder = {
             order_id: operation.order_id,
             account_id: operation.account_id,
@@ -49,15 +48,12 @@ export class MatchingEngine {
             quantity: incomingQuantity,
         };
 
-        // 3. Perform matching by calling the order book
         trades = this.orderBook.matchIncomingOrder(incomingOrder);
 
-        // 4. If the incoming order has remaining quantity, add it to the book
         if (incomingOrder.quantity.greaterThan(0)) {
             this.orderBook.addOrder(incomingOrder);
         }
 
-        // 5. Return the generated trades
         return trades;
     }
 

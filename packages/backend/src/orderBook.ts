@@ -14,12 +14,14 @@ export class OrderBook {
 
   // Add an order to the order book
   addOrder(order: OrderBookOrder): void {
-    // Ensure quantity is positive
-    if (order.quantity.lessThanOrEqualTo(0)) return;
+    if (order.quantity.lessThanOrEqualTo(0)) {
+      console.warn(`[WARN] Order ${order.order_id} has non-positive quantity. Skipping.`);
+      return;
+    }
 
     this.orderById.set(order.order_id, order);
 
-    const priceStr = order.price.toString(); // Use string price for key
+    const priceStr = order.price.toString();
     const priceLevel = this.priceLevels.get(priceStr);
     if (!priceLevel) {
       this.priceLevels.set(priceStr, [order]);
@@ -37,7 +39,7 @@ export class OrderBook {
 
     this.orderById.delete(orderId);
 
-    const priceStr = order.price.toString(); // Use string price for key
+    const priceStr = order.price.toString();
     const priceLevel = this.priceLevels.get(priceStr);
     if (priceLevel) {
       const index = priceLevel.findIndex(o => o.order_id === orderId);
@@ -65,11 +67,9 @@ export class OrderBook {
     const priceLevelKeys = Array.from(this.priceLevels.keys()).map(p => new Decimal(p));
 
     if (incomingOrder.type === 'BUY') {
-      // Sort Decimal prices in ascending order
       priceLevelKeys.sort((a, b) => a.comparedTo(b));
 
       for (const price of priceLevelKeys) {
-        // Use Decimal comparisons
         if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
         if (price.greaterThan(incomingOrder.price)) break;
 
@@ -78,8 +78,7 @@ export class OrderBook {
         for (let i = 0; i < ordersAtPrice.length; i++) {
             if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
 
-            const restingOrderRef = ordersAtPrice[i]; // Reference from priceLevel
-            // Get the authoritative order state from orderById map
+            const restingOrderRef = ordersAtPrice[i];
             const restingOrder = this.orderById.get(restingOrderRef.order_id);
             if (!restingOrder || restingOrder.type !== 'SELL' || restingOrder.quantity.lessThanOrEqualTo(0)) {
                 continue;
@@ -87,7 +86,7 @@ export class OrderBook {
 
             // Prevent self-trading
             if (restingOrder.account_id === incomingOrder.account_id) {
-                continue; // Skip matching with own order
+                continue;
             }
 
             // Calculate trade quantity using Decimal.min
@@ -98,33 +97,28 @@ export class OrderBook {
                     tradeId: randomUUID(),
                     buyOrderId: incomingOrder.order_id,
                     sellOrderId: restingOrder.order_id,
-                    price: restingOrder.price, // Trade occurs at resting order's price
+                    price: restingOrder.price,
                     quantity: tradeQuantity,
                     timestamp: Date.now(),
                 };
                 trades.push(trade);
 
-                // Update quantities using Decimal.sub
                 incomingOrder.quantity = incomingOrder.quantity.sub(tradeQuantity);
                 restingOrder.quantity = restingOrder.quantity.sub(tradeQuantity);
 
-                // Update the order in the central map
                 this.orderById.set(restingOrder.order_id, restingOrder);
 
-                // If resting order is fully filled, remove it
                 if (restingOrder.quantity.lessThanOrEqualTo(0)) {
                     this.removeOrderById(restingOrder.order_id);
-                    i--; // Adjust index after removal
+                    i--;
                 }
             }
         }
       }
     } else { // incomingOrder.type === 'SELL'
-      // Sort Decimal prices in descending order
       priceLevelKeys.sort((a, b) => b.comparedTo(a));
 
       for (const price of priceLevelKeys) {
-        // Use Decimal comparisons
         if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
         if (price.lessThan(incomingOrder.price)) break;
 
@@ -133,8 +127,7 @@ export class OrderBook {
         for (let i = 0; i < ordersAtPrice.length; i++) {
             if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
 
-            const restingOrderRef = ordersAtPrice[i]; // Reference from priceLevel
-            // Get the authoritative order state from orderById map
+            const restingOrderRef = ordersAtPrice[i];
             const restingOrder = this.orderById.get(restingOrderRef.order_id);
             if (!restingOrder || restingOrder.type !== 'BUY' || restingOrder.quantity.lessThanOrEqualTo(0)) {
                 continue;
@@ -142,7 +135,7 @@ export class OrderBook {
 
             // Prevent self-trading
             if (restingOrder.account_id === incomingOrder.account_id) {
-                continue; // Skip matching with own order
+                continue;
             }
 
             // Calculate trade quantity using Decimal.min
@@ -153,30 +146,26 @@ export class OrderBook {
                     tradeId: randomUUID(),
                     buyOrderId: restingOrder.order_id,
                     sellOrderId: incomingOrder.order_id,
-                    price: restingOrder.price, // Trade occurs at resting order's price
+                    price: restingOrder.price,
                     quantity: tradeQuantity,
                     timestamp: Date.now(),
                 };
                 trades.push(trade);
 
-                // Update quantities using Decimal.sub
                 incomingOrder.quantity = incomingOrder.quantity.sub(tradeQuantity);
                 restingOrder.quantity = restingOrder.quantity.sub(tradeQuantity);
 
-                // Update the order in the central map
                 this.orderById.set(restingOrder.order_id, restingOrder);
 
-                // If resting order is fully filled, remove it
                 if (restingOrder.quantity.lessThanOrEqualTo(0)) {
                     this.removeOrderById(restingOrder.order_id);
-                    i--; // Adjust index after removal
+                    i--;
                 }
             }
         }
       }
     }
 
-    // Update incoming order state if partially filled
     if (incomingOrder.quantity.greaterThan(0)) {
         this.orderById.set(incomingOrder.order_id, incomingOrder);
     }
@@ -189,16 +178,13 @@ export class OrderBook {
     const bids: OutputOrder[] = [];
     const asks: OutputOrder[] = [];
 
-    // Iterate through all orders stored by ID
     for (const order of this.orderById.values()) {
-        // Consider only orders with positive quantity
         if (order.quantity.greaterThan(0)) {
           // Use a fixed number of decimal places for output consistency
-          const priceStr = order.price.toFixed(8); // Example: 8 decimal places
-          const quantityStr = order.quantity.toFixed(8); // Example: 8 decimal places
+          const priceStr = order.price.toFixed(8);
+          const quantityStr = order.quantity.toFixed(8);
 
           const outputOrder: OutputOrder = {
-              // Explicitly list properties to ensure correct type
               order_id: order.order_id,
               account_id: order.account_id,
               pair: order.pair,
@@ -214,9 +200,7 @@ export class OrderBook {
         }
     }
 
-    // Sort bids descending by price (using Decimal for comparison)
     bids.sort((a, b) => new Decimal(b.price).comparedTo(new Decimal(a.price)));
-    // Sort asks ascending by price (using Decimal for comparison)
     asks.sort((a, b) => new Decimal(a.price).comparedTo(new Decimal(b.price)));
 
     return { bids, asks };

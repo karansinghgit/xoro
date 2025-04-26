@@ -113,7 +113,15 @@ describe('OrderBook', () => {
     const zeroQuantityOrder: OrderBookOrder = {
       ...buyOrder1, quantity: new Decimal(0)
     };
+
+    // Add a check to see if the warning is called
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
     orderBook.addOrder(zeroQuantityOrder);
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(`[WARN] Order ${zeroQuantityOrder.order_id} has non-positive quantity. Skipping.`);
+    consoleWarnSpy.mockRestore();
+
     orderBook.addOrder({...sellOrder1});
 
     const output = orderBook.getOutputOrderBook();
