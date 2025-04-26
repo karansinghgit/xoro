@@ -13,5 +13,8 @@
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "decimal.js": "^10.5.0"
   }
 }

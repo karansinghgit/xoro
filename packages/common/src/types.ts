@@ -1,3 +1,5 @@
+import { Decimal } from 'decimal.js';
+
 export interface IncomingOperation {
   type_op: 'CREATE' | 'DELETE';
   account_id: string;
@@ -13,20 +15,30 @@ export interface OrderBookOrder {
   account_id: string;
   pair: string;
   type: 'BUY' | 'SELL';
-  price: number;
-  quantity: number;
+  price: Decimal;
+  quantity: Decimal;
 }
 
 export interface Trade {
   tradeId: string;
   buyOrderId: string;
   sellOrderId: string;
-  price: number;
-  quantity: number;
+  price: Decimal;
+  quantity: Decimal;
   timestamp: number;
 }
 
 export interface OrderBookOutput {
-  bids: OrderBookOrder[];
-  asks: OrderBookOrder[];
+  bids: OutputOrder[];
+  asks: OutputOrder[];
+}
+
+// Interface for the final stringified output
+export interface OutputOrder {
+  order_id: string;
+  account_id: string;
+  pair: string;
+  type: 'BUY' | 'SELL';
+  price: string;
+  quantity: string;
 }

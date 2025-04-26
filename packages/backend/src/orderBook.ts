@@ -1,22 +1,28 @@
-import { OrderBookOrder, OrderBookOutput, Trade } from '@xoro/common';
+import { OrderBookOrder, OrderBookOutput, Trade, OutputOrder } from '@xoro/common';
 import { randomUUID } from 'crypto';
+import { Decimal } from 'decimal.js';
 
 export class OrderBook {
-  private priceLevels: Map<number, OrderBookOrder[]>;
+  // Use string representation of price for Map keys
+  private priceLevels: Map<string, OrderBookOrder[]>;
   private orderById: Map<string, OrderBookOrder>;
 
   constructor() {
-    this.priceLevels = new Map<number, OrderBookOrder[]>();
+    this.priceLevels = new Map<string, OrderBookOrder[]>();
     this.orderById = new Map<string, OrderBookOrder>();
   }
 
   // Add an order to the order book
   addOrder(order: OrderBookOrder): void {
+    // Ensure quantity is positive
+    if (order.quantity.lessThanOrEqualTo(0)) return;
+
     this.orderById.set(order.order_id, order);
 
-    const priceLevel = this.priceLevels.get(order.price);
+    const priceStr = order.price.toString(); // Use string price for key
+    const priceLevel = this.priceLevels.get(priceStr);
     if (!priceLevel) {
-      this.priceLevels.set(order.price, [order]);
+      this.priceLevels.set(priceStr, [order]);
     } else {
       priceLevel.push(order);
     }
@@ -31,7 +37,8 @@ export class OrderBook {
 
     this.orderById.delete(orderId);
 
-    const priceLevel = this.priceLevels.get(order.price);
+    const priceStr = order.price.toString(); // Use string price for key
+    const priceLevel = this.priceLevels.get(priceStr);
     if (priceLevel) {
       const index = priceLevel.findIndex(o => o.order_id === orderId);
       if (index !== -1) {
@@ -39,7 +46,7 @@ export class OrderBook {
       }
 
       if (priceLevel.length === 0) {
-        this.priceLevels.delete(order.price);
+        this.priceLevels.delete(priceStr);
       }
     }
 
@@ -54,116 +61,163 @@ export class OrderBook {
   // Match an incoming order against the order book
   matchIncomingOrder(incomingOrder: OrderBookOrder): Trade[] {
     const trades: Trade[] = [];
-    const priceLevelKeys = Array.from(this.priceLevels.keys());
+    // Get price keys as strings, convert to Decimal for sorting
+    const priceLevelKeys = Array.from(this.priceLevels.keys()).map(p => new Decimal(p));
 
     if (incomingOrder.type === 'BUY') {
-      // Sort the price levels in ascending order
-      priceLevelKeys.sort((a, b) => a - b);
+      // Sort Decimal prices in ascending order
+      priceLevelKeys.sort((a, b) => a.comparedTo(b));
 
       for (const price of priceLevelKeys) {
-        if (incomingOrder.quantity <= 0) break;
-        if (price > incomingOrder.price) break;
+        // Use Decimal comparisons
+        if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
+        if (price.greaterThan(incomingOrder.price)) break;
 
-        const ordersAtPrice = this.priceLevels.get(price) || [];
+        const priceStr = price.toString();
+        const ordersAtPrice = this.priceLevels.get(priceStr) || [];
         for (let i = 0; i < ordersAtPrice.length; i++) {
-            if (incomingOrder.quantity <= 0) break;
+            if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
 
-            const restingOrder = ordersAtPrice[i];
-            const currentRestingOrder = this.orderById.get(restingOrder.order_id);
-            if (!currentRestingOrder || currentRestingOrder.type !== 'SELL' || currentRestingOrder.quantity <= 0) {
+            const restingOrderRef = ordersAtPrice[i]; // Reference from priceLevel
+            // Get the authoritative order state from orderById map
+            const restingOrder = this.orderById.get(restingOrderRef.order_id);
+            if (!restingOrder || restingOrder.type !== 'SELL' || restingOrder.quantity.lessThanOrEqualTo(0)) {
                 continue;
             }
 
-            // If there is a trade, create a trade object and add it to the trades array
-            const tradeQuantity = Math.min(incomingOrder.quantity, currentRestingOrder.quantity);
-            if (tradeQuantity > 0) {
+            // Prevent self-trading
+            if (restingOrder.account_id === incomingOrder.account_id) {
+                continue; // Skip matching with own order
+            }
+
+            // Calculate trade quantity using Decimal.min
+            const tradeQuantity = Decimal.min(incomingOrder.quantity, restingOrder.quantity);
+            if (tradeQuantity.greaterThan(0)) {
+                // Create trade with Decimal values
                 const trade: Trade = {
                     tradeId: randomUUID(),
                     buyOrderId: incomingOrder.order_id,
-                    sellOrderId: currentRestingOrder.order_id,
-                    price: currentRestingOrder.price,
+                    sellOrderId: restingOrder.order_id,
+                    price: restingOrder.price, // Trade occurs at resting order's price
                     quantity: tradeQuantity,
                     timestamp: Date.now(),
                 };
                 trades.push(trade);
 
-                incomingOrder.quantity -= tradeQuantity;
-                currentRestingOrder.quantity -= tradeQuantity;
+                // Update quantities using Decimal.sub
+                incomingOrder.quantity = incomingOrder.quantity.sub(tradeQuantity);
+                restingOrder.quantity = restingOrder.quantity.sub(tradeQuantity);
 
-                if (currentRestingOrder.quantity <= 0) {
-                    this.removeOrderById(currentRestingOrder.order_id);
-                    i--; 
+                // Update the order in the central map
+                this.orderById.set(restingOrder.order_id, restingOrder);
+
+                // If resting order is fully filled, remove it
+                if (restingOrder.quantity.lessThanOrEqualTo(0)) {
+                    this.removeOrderById(restingOrder.order_id);
+                    i--; // Adjust index after removal
                 }
             }
         }
       }
     } else { // incomingOrder.type === 'SELL'
-      // Sort the price levels in descending order
-      priceLevelKeys.sort((a, b) => b - a);
+      // Sort Decimal prices in descending order
+      priceLevelKeys.sort((a, b) => b.comparedTo(a));
 
       for (const price of priceLevelKeys) {
-        if (incomingOrder.quantity <= 0) break;
-        if (price < incomingOrder.price) break;
+        // Use Decimal comparisons
+        if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
+        if (price.lessThan(incomingOrder.price)) break;
 
-        const ordersAtPrice = this.priceLevels.get(price) || [];
+        const priceStr = price.toString();
+        const ordersAtPrice = this.priceLevels.get(priceStr) || [];
         for (let i = 0; i < ordersAtPrice.length; i++) {
-            if (incomingOrder.quantity <= 0) break;
+            if (incomingOrder.quantity.lessThanOrEqualTo(0)) break;
 
-            const restingOrder = ordersAtPrice[i];
-            const currentRestingOrder = this.orderById.get(restingOrder.order_id);
-             if (!currentRestingOrder || currentRestingOrder.type !== 'BUY' || currentRestingOrder.quantity <= 0) {
+            const restingOrderRef = ordersAtPrice[i]; // Reference from priceLevel
+            // Get the authoritative order state from orderById map
+            const restingOrder = this.orderById.get(restingOrderRef.order_id);
+            if (!restingOrder || restingOrder.type !== 'BUY' || restingOrder.quantity.lessThanOrEqualTo(0)) {
                 continue;
             }
 
-            // If there is a trade, create a trade object and add it to the trades array
-            const tradeQuantity = Math.min(incomingOrder.quantity, currentRestingOrder.quantity);
-            if (tradeQuantity > 0) {
+            // Prevent self-trading
+            if (restingOrder.account_id === incomingOrder.account_id) {
+                continue; // Skip matching with own order
+            }
+
+            // Calculate trade quantity using Decimal.min
+            const tradeQuantity = Decimal.min(incomingOrder.quantity, restingOrder.quantity);
+            if (tradeQuantity.greaterThan(0)) {
+                // Create trade with Decimal values
                 const trade: Trade = {
                     tradeId: randomUUID(),
-                    buyOrderId: currentRestingOrder.order_id,
+                    buyOrderId: restingOrder.order_id,
                     sellOrderId: incomingOrder.order_id,
-                    price: currentRestingOrder.price,
+                    price: restingOrder.price, // Trade occurs at resting order's price
                     quantity: tradeQuantity,
                     timestamp: Date.now(),
                 };
                 trades.push(trade);
 
-                incomingOrder.quantity -= tradeQuantity;
-                currentRestingOrder.quantity -= tradeQuantity;
+                // Update quantities using Decimal.sub
+                incomingOrder.quantity = incomingOrder.quantity.sub(tradeQuantity);
+                restingOrder.quantity = restingOrder.quantity.sub(tradeQuantity);
 
-                if (currentRestingOrder.quantity <= 0) {
-                    this.removeOrderById(currentRestingOrder.order_id);
-                    i--; 
+                // Update the order in the central map
+                this.orderById.set(restingOrder.order_id, restingOrder);
+
+                // If resting order is fully filled, remove it
+                if (restingOrder.quantity.lessThanOrEqualTo(0)) {
+                    this.removeOrderById(restingOrder.order_id);
+                    i--; // Adjust index after removal
                 }
             }
         }
       }
     }
 
+    // Update incoming order state if partially filled
+    if (incomingOrder.quantity.greaterThan(0)) {
+        this.orderById.set(incomingOrder.order_id, incomingOrder);
+    }
+
     return trades;
   }
 
-  // Get the current state of the order book as an output object
+  // Get the current state of the order book for output (with string prices/quantities)
   getOutputOrderBook(): OrderBookOutput {
-    const bids: OrderBookOrder[] = [];
-    const asks: OrderBookOrder[] = [];
+    const bids: OutputOrder[] = [];
+    const asks: OutputOrder[] = [];
 
-    for (const ordersAtPrice of this.priceLevels.values()) {
-      for (const orderInLevel of ordersAtPrice) {
-        const currentOrder = this.orderById.get(orderInLevel.order_id);
+    // Iterate through all orders stored by ID
+    for (const order of this.orderById.values()) {
+        // Consider only orders with positive quantity
+        if (order.quantity.greaterThan(0)) {
+          // Use a fixed number of decimal places for output consistency
+          const priceStr = order.price.toFixed(8); // Example: 8 decimal places
+          const quantityStr = order.quantity.toFixed(8); // Example: 8 decimal places
 
-        if (currentOrder && currentOrder.quantity > 0) {
-          if (currentOrder.type === 'BUY') {
-            bids.push(currentOrder);
+          const outputOrder: OutputOrder = {
+              // Explicitly list properties to ensure correct type
+              order_id: order.order_id,
+              account_id: order.account_id,
+              pair: order.pair,
+              type: order.type,
+              price: priceStr,
+              quantity: quantityStr,
+          };
+          if (outputOrder.type === 'BUY') {
+            bids.push(outputOrder);
           } else {
-            asks.push(currentOrder);
+            asks.push(outputOrder);
           }
         }
-      }
     }
 
-    bids.sort((a, b) => b.price - a.price);
-    asks.sort((a, b) => a.price - b.price);
+    // Sort bids descending by price (using Decimal for comparison)
+    bids.sort((a, b) => new Decimal(b.price).comparedTo(new Decimal(a.price)));
+    // Sort asks ascending by price (using Decimal for comparison)
+    asks.sort((a, b) => new Decimal(a.price).comparedTo(new Decimal(b.price)));
 
     return { bids, asks };
   }

@@ -2,17 +2,31 @@
   "name": "xoro",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Monorepo for the trading engine",
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
-    "test": "jest",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "build:backend": "pnpm --filter backend build",
+    "build:frontend": "pnpm --filter frontend build",
+    "start:backend:cli": "pnpm --filter backend start:cli",
+    "start:frontend": "pnpm --filter frontend dev",
+    "test": "pnpm -r test",
+    "test:backend": "pnpm --filter backend test",
+    "test:frontend": "pnpm --filter frontend test",
+    "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/jest": "^29.5.14"
+    "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.31.0",
+    "@typescript-eslint/parser": "^8.31.0",
+    "eslint": "^9.25.1",
+    "globals": "^16.0.0",
+    "typescript": "^5.8.3"
   }
 }
