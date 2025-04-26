@@ -60,4 +60,8 @@ export class MatchingEngine {
     public getOutputOrderBook(): OrderBookOutput {
         return this.orderBook.getOutputOrderBook();
     }
+
+    public loadFromOutput(output: OrderBookOutput): void {
+        this.orderBook.loadFromOutput(output);
+    }
 } 

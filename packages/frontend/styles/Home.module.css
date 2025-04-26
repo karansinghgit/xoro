@@ -1,0 +1,263 @@
+.container {
+  min-height: 100vh;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f4f7f6;
+}
+
+.main {
+  padding: 2rem 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  max-width: 1400px;
+}
+
+.footer {
+  width: 100%;
+  padding: 1rem 0;
+  border-top: 1px solid #d1d9e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: auto;
+  background-color: #ffffff;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.footer a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.header {
+  width: 100%;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d1d9e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+  font-size: 2.5rem;
+  text-align: center;
+  color: #333;
+}
+
+.statusIndicator {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.errorText {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-areas:
+    "form form"
+    "book trades";
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.orderFormSection { grid-area: form; }
+.orderBookSection { grid-area: book; }
+.tradesSection { grid-area: trades; }
+
+.section {
+  margin-top: 0;
+  padding: 1.5rem;
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  width: 100%;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  color: #1a2e3b;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.orderForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.formGroup label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: #0070f3;
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+}
+
+.submitButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: white;
+  margin-top: 1rem;
+}
+
+.buyButton {
+  background-color: #2ecc71;
+}
+
+.buyButton:hover {
+  background-color: #27ae60;
+}
+
+.sellButton {
+  background-color: #e74c3c;
+}
+
+.sellButton:hover {
+  background-color: #c0392b;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 0.6rem 0.5rem;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+
+.dataTable th {
+  text-align: right;
+  font-weight: 600;
+  color: #555;
+  background-color: #f9f9f9;
+  border-bottom-width: 2px;
+  border-color: #ddd;
+}
+
+.dataTable th:first-child,
+.dataTable td:first-child {
+  text-align: left;
+}
+
+.dataTable tbody tr:nth-child(odd) {
+  background-color: #fdfdfd;
+}
+
+.dataTable tbody tr:hover {
+  background-color: #f0f0f0;
+}
+
+.orderBookContainer {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.orderBookSide {
+  flex: 1;
+  min-width: 280px;
+}
+
+.bidRow td {
+}
+
+.askRow td {
+}
+
+.bidPrice {
+  color: #27ae60;
+  font-weight: 500;
+}
+
+.askPrice {
+  color: #c0392b;
+  font-weight: 500;
+}
+
+.tradesTable td:first-child {
+  color: #777;
+  min-width: 80px;
+}
+
+@media (max-width: 768px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "form"
+      "book"
+      "trades";
+  }
+
+  .orderBookContainer {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .section h2 {
+    font-size: 1.2rem;
+  }
+} 

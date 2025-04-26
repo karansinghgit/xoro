@@ -315,4 +315,58 @@ describe('MatchingEngine', () => {
         const expectedRemainingOp: CreateOperationInput = { ...incomingSellSelf, amount: '7' };
         expect(finalBook.asks).toEqual([stringifyBookOrder(expectBookOrder(expectedRemainingOp))]);
     });
+
+    test('should use loadFromOutput and match correctly against loaded state', () => {
+        const engine = new MatchingEngine();
+        const initialOrderBook = {
+            bids: [
+                {
+                    order_id: 'existing_bid1',
+                    account_id: 'acc1',
+                    pair: 'BTC/USD',
+                    type: 'BUY' as const,
+                    price: '98.50',
+                    quantity: '5.00'
+                },
+                {
+                    order_id: 'existing_bid2',
+                    account_id: 'acc2',
+                    pair: 'BTC/USD',
+                    type: 'BUY' as const,
+                    price: '97.00',
+                    quantity: '3.00'
+                }
+            ],
+            asks: [
+                {
+                    order_id: 'existing_ask1',
+                    account_id: 'acc3',
+                    pair: 'BTC/USD',
+                    type: 'SELL' as const,
+                    price: '101.00',
+                    quantity: '4.00'
+                }
+            ]
+        };
+        
+        engine.loadFromOutput(initialOrderBook);
+        
+        const currentBook = engine.getOutputOrderBook();
+        expect(currentBook.bids.length).toBe(2);
+        expect(currentBook.asks.length).toBe(1);
+        
+        const incomingBuy = createOp('new_buy', 'BUY', '2.00', '101.50', 'BTC/USD', 'buyerAcc');
+        const trades = engine.processOperation(incomingBuy as IncomingOperation);
+        
+        expect(trades.length).toBe(1);
+        expect(trades[0].price.toNumber()).toBe(101);
+        expect(trades[0].quantity.toNumber()).toBe(2);
+        expect(trades[0].buyOrderId).toBe('new_buy');
+        expect(trades[0].sellOrderId).toBe('existing_ask1');
+        
+        const updatedBook = engine.getOutputOrderBook();
+        const remainingAsk = updatedBook.asks.find(ask => ask.order_id === 'existing_ask1');
+        expect(remainingAsk).toBeDefined();
+        expect(remainingAsk?.quantity).toBe('2.00000000');
+    });
 }); 

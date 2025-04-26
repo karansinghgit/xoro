@@ -205,4 +205,53 @@ export class OrderBook {
 
     return { bids, asks };
   }
+
+  // Load the order book state from an OrderBookOutput object
+  loadFromOutput(output: OrderBookOutput): void {
+    // Clear the current state
+    this.priceLevels.clear();
+    this.orderById.clear();
+
+    // Process all bids and asks
+    const processOrders = (orders: OutputOrder[]) => {
+      for (const outputOrder of orders) {
+        try {
+          // Convert string price and quantity to Decimal
+          const price = new Decimal(outputOrder.price);
+          const quantity = new Decimal(outputOrder.quantity);
+
+          if (quantity.isNegative() || quantity.isZero() || price.isNegative() || price.isZero()) {
+            console.warn(`Invalid price or quantity for order ${outputOrder.order_id}. Skipping.`);
+            continue;
+          }
+
+          const order: OrderBookOrder = {
+            order_id: outputOrder.order_id,
+            account_id: outputOrder.account_id,
+            pair: outputOrder.pair,
+            type: outputOrder.type,
+            price,
+            quantity
+          };
+
+          // Add to both maps
+          this.orderById.set(order.order_id, order);
+
+          const priceStr = price.toString();
+          const priceLevel = this.priceLevels.get(priceStr);
+          if (!priceLevel) {
+            this.priceLevels.set(priceStr, [order]);
+          } else {
+            priceLevel.push(order);
+          }
+        } catch (error) {
+          console.warn(`Error parsing order ${outputOrder.order_id}. Skipping.`, error);
+        }
+      }
+    };
+
+    // Process both bids and asks
+    processOrders(output.bids);
+    processOrders(output.asks);
+  }
 }

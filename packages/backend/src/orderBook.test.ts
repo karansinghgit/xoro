@@ -304,3 +304,184 @@ describe('OrderBook - matchIncomingOrder', () => {
   });
 
 });
+
+describe('OrderBook - loadFromOutput', () => {
+  let orderBook: OrderBook;
+
+  beforeEach(() => {
+    orderBook = new OrderBook();
+  });
+
+  test('should load orders from OrderBookOutput', () => {
+    const output = {
+      bids: [
+        {
+          order_id: 'bid1',
+          account_id: 'acc1',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: '100.50',
+          quantity: '5.75'
+        },
+        {
+          order_id: 'bid2',
+          account_id: 'acc2',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: '99.75',
+          quantity: '3.25'
+        }
+      ],
+      asks: [
+        {
+          order_id: 'ask1',
+          account_id: 'acc3',
+          pair: 'BTC/USD',
+          type: 'SELL' as const,
+          price: '101.25',
+          quantity: '2.50'
+        },
+        {
+          order_id: 'ask2',
+          account_id: 'acc4',
+          pair: 'BTC/USD',
+          type: 'SELL' as const,
+          price: '102.00',
+          quantity: '4.00'
+        }
+      ]
+    };
+
+    orderBook.loadFromOutput(output);
+
+    const bid1 = orderBook.getOrderById('bid1');
+    const bid2 = orderBook.getOrderById('bid2');
+    const ask1 = orderBook.getOrderById('ask1');
+    const ask2 = orderBook.getOrderById('ask2');
+
+    // Verify bid1
+    expect(bid1).toBeDefined();
+    expect(bid1?.order_id).toBe('bid1');
+    expect(bid1?.account_id).toBe('acc1');
+    expect(bid1?.pair).toBe('BTC/USD');
+    expect(bid1?.type).toBe('BUY');
+    expect(bid1?.price.equals(new Decimal('100.50'))).toBe(true);
+    expect(bid1?.quantity.equals(new Decimal('5.75'))).toBe(true);
+
+    // Verify bid2
+    expect(bid2).toBeDefined();
+    expect(bid2?.price.equals(new Decimal('99.75'))).toBe(true);
+    expect(bid2?.quantity.equals(new Decimal('3.25'))).toBe(true);
+
+    // Verify ask1
+    expect(ask1).toBeDefined();
+    expect(ask1?.price.equals(new Decimal('101.25'))).toBe(true);
+    expect(ask1?.quantity.equals(new Decimal('2.50'))).toBe(true);
+
+    // Verify ask2
+    expect(ask2).toBeDefined();
+    expect(ask2?.price.equals(new Decimal('102.00'))).toBe(true);
+    expect(ask2?.quantity.equals(new Decimal('4.00'))).toBe(true);
+
+    // Verify the book structure (via getOutputOrderBook) matches the input
+    const reloadedOutput = orderBook.getOutputOrderBook();
+    expect(reloadedOutput.bids.length).toBe(2);
+    expect(reloadedOutput.asks.length).toBe(2);
+
+    const findOrder = (orders: any[], id: string) => orders.find(o => o.order_id === id);
+    
+    const outputBid1 = findOrder(reloadedOutput.bids, 'bid1');
+    expect(outputBid1).toBeDefined();
+    expect(outputBid1?.price).toBe(new Decimal('100.50').toFixed(8));
+    
+    const outputAsk1 = findOrder(reloadedOutput.asks, 'ask1');
+    expect(outputAsk1).toBeDefined();
+    expect(outputAsk1?.price).toBe(new Decimal('101.25').toFixed(8));
+  });
+
+  test('should clear existing orders when loading from output', () => {
+    const initialBuy: OrderBookOrder = {
+      order_id: 'initial_buy', account_id: 'acc1', pair: 'BTC/USD', 
+      type: 'BUY', price: new Decimal(90), quantity: new Decimal(10)
+    };
+    orderBook.addOrder(initialBuy);
+
+    // Verify initial state
+    expect(orderBook.getOrderById('initial_buy')).toBeDefined();
+
+    // Create new output with different orders
+    const output = {
+      bids: [
+        {
+          order_id: 'new_bid',
+          account_id: 'acc2',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: '95.00',
+          quantity: '2.00'
+        }
+      ],
+      asks: []
+    };
+
+    // Load from the new output
+    orderBook.loadFromOutput(output);
+
+    // Verify old orders are gone
+    expect(orderBook.getOrderById('initial_buy')).toBeUndefined();
+    
+    // Verify new orders exist
+    const newBid = orderBook.getOrderById('new_bid');
+    expect(newBid).toBeDefined();
+    expect(newBid?.price.equals(new Decimal('95.00'))).toBe(true);
+  });
+
+  test('should handle invalid price/quantity values gracefully', () => {
+    // Create output with some invalid values
+    const output = {
+      bids: [
+        {
+          order_id: 'valid_bid',
+          account_id: 'acc1',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: '100.00',
+          quantity: '5.00'
+        },
+        {
+          order_id: 'invalid_price',
+          account_id: 'acc2',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: 'invalid',
+          quantity: '3.00'
+        },
+        {
+          order_id: 'zero_quantity',
+          account_id: 'acc3',
+          pair: 'BTC/USD',
+          type: 'BUY' as const,
+          price: '99.00',
+          quantity: '0'
+        }
+      ],
+      asks: []
+    };
+
+    // Mock console.warn to verify warnings
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Load the output
+    orderBook.loadFromOutput(output);
+
+    // Verify valid order was loaded
+    expect(orderBook.getOrderById('valid_bid')).toBeDefined();
+    
+    // Verify invalid orders were not loaded
+    expect(orderBook.getOrderById('invalid_price')).toBeUndefined();
+    expect(orderBook.getOrderById('zero_quantity')).toBeUndefined();
+    
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+    consoleWarnSpy.mockRestore();
+  });
+});
