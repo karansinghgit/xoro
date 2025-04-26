@@ -2,6 +2,16 @@
 
 Trading engine written in Typescript. It's structured as a monorepo using pnpm workspaces.
 
+## Design and Implementation Decisions
+
+1. The project is structured as a monorepo to make it easier to manage dependencies and build the project. Would use a microservices architecture in a production setting.
+2. Data persistence is in-memory for simplicity.
+3. Matching engine is also in TS for simplicity. Would use Go/Rust otherwise.
+4. To add a feel for interactivity, I've added a websocket server to the backend.
+5. Have added both unit and integration tests.
+6. Error handling and logging are basic.
+
+
 ## Project Structure
 
 The monorepo is organized into the following packages:
@@ -23,9 +33,6 @@ The monorepo is organized into the following packages:
 
 The following scripts are available in the root `package.json` and can be run using `pnpm <script-name>`:
 
--   `lint`: Lints the codebase using ESLint across all packages.
--   `format`: Formats the codebase using Prettier across all packages.
--   `typecheck`: Runs TypeScript type checking across all packages.
 -   `build`: Builds all packages (`backend`, `frontend`, `common`).
 -   `build:backend`: Builds only the `backend` package.
 -   `build:frontend`: Builds only the `frontend` package.
@@ -38,12 +45,12 @@ The following scripts are available in the root `package.json` and can be run us
 -   `test:frontend`: Runs tests specifically for the `frontend` package.
 -   `clean`: Removes build artifacts (e.g., `dist` folders) from all packages and the root `node_modules` directory. Assumes each package has a corresponding `clean` script.
 
-## Development Status
+## Implementation Details
 
 ### Backend
 
-*   **Core Logic:** The `MatchingEngine` and `OrderBook` implementations in `packages/backend` are complete and have passing unit tests (`pnpm test:backend`).
-*   **CLI:** The command-line interface (`packages/backend/src/cli.ts`) for processing `io/orders.json` is implemented and can be run via `pnpm start:backend:cli` after building.
+*   **Core Logic:** The `MatchingEngine` and `OrderBook` implementations in `packages/backend` are complete and have comprehensive tests (`pnpm test:backend`).
+*   **CLI:** The command-line interface (`packages/backend/src/cli.ts`) for processing `io/orders.json` is implemented and can be run via `pnpm start:backend:cli` after building (`pnpm build:backend`).
 *   **API Server:** An Express server (`packages/backend/src/server.ts`) provides HTTP endpoints (`/api/orderbook`, `/api/trades`, `/api/submit-order`) and a WebSocket server for real-time updates. It loads initial data from the CLI output.
 
 ### Frontend
