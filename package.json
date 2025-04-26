@@ -1,0 +1,15 @@
+{
+  "name": "xoro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for the trading engine",
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "test": "jest",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

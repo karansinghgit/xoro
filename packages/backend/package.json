@@ -1,0 +1,21 @@
+{
+  "name": "@xoro/backend",
+  "version": "1.0.0",
+  "description": "Trading engine backend",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@xoro/common": "workspace:*"
+  },
+  "devDependencies": {}
+}
