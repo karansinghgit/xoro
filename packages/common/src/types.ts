@@ -12,7 +12,7 @@ export interface OrderBookOrder {
   order_id: string;
   account_id: string;
   pair: string;
-  type: 'buy' | 'sell';
+  type: 'BUY' | 'SELL';
   price: number;
   quantity: number;
 }
