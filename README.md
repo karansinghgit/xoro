@@ -2,14 +2,17 @@
 
 Trading engine written in Typescript. It's structured as a monorepo using pnpm workspaces.
 
+![alt text](image.png)
+
 ## Design and Implementation Decisions
 
 1. The project is structured as a monorepo to make it easier to manage dependencies and build the project. Would use a microservices architecture in a production setting.
-2. Data persistence is in-memory for simplicity.
+2. Data is handled in-memory for simplicity.
 3. Matching engine is also in TS for simplicity. Would use Go/Rust otherwise.
 4. To add a feel for interactivity, I've added a websocket server to the backend.
-5. Have added both unit and integration tests.
+5. Have added decent coverage with unit and integration tests.
 6. Error handling and logging are basic.
+7. UI is seeded with basic orders from the `io/orders.json` file as provided in the assignment.
 
 
 ## Project Structure
